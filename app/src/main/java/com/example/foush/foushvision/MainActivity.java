@@ -8,6 +8,8 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
@@ -34,6 +36,8 @@ import com.glidebitmappool.GlideBitmapPool;
 import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.face.Face;
 import com.google.android.gms.vision.face.FaceDetector;
+
+import org.zeroturnaround.zip.ZipUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -88,16 +92,35 @@ public class MainActivity extends AppCompatActivity   {
     final static String zipfile=BitmapUtils.storageDir + ".zip";
     private static String contnet_type;
     private static File f;
+    float x1=0;
+    float x2=0;
+    float y1=0;
+    float y2=0;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        initView();//initialize the ui views
+
+    }
+
+    private void initView() {
+
         ButterKnife.bind(this);
+        /**
+        * Glide Bitmap Pool is a memory management library for reusing the bitmap memory.
+         * As it reuses bitmap memory , so no more GC calling again and again ,
+         * hence smooth running application. It uses inBitmap while decoding the bitmap
+         * on the supported android versions. All the version use-cases has been handled to optimize
+         * it better.
+        */
         GlideBitmapPool.initialize(10 * 1024 * 1024); // 10mb max memory size
+        /*init the progress bar for the upload zip file part*/
         new ProgressDialog(MainActivity.this);
     }
+
 
     @OnClick({R.id.pic1, R.id.pic2, R.id.pic3, R.id.uploadButton})
     public void onViewClicked(View view) {
@@ -128,6 +151,8 @@ public class MainActivity extends AppCompatActivity   {
                 }
                 break;
             case R.id.uploadButton:
+                 uploadZipToServer(BitmapUtils.storageDir + ".zip");
+
                 break;
         }
     }
@@ -273,6 +298,7 @@ public class MainActivity extends AppCompatActivity   {
         Frame frame = new Frame.Builder().setBitmap(myBitmap).build();
         SparseArray<Face> faces = faceDetector.detect(frame);
 
+        //No faces in the picture
         if (faces.size() == 0) {
             Toast.makeText(this, "No faces detected Please take the picture again", Toast.LENGTH_LONG).show();
             Noface(flag);
@@ -283,44 +309,41 @@ public class MainActivity extends AppCompatActivity   {
             //Draw Rectangles on the Faces
             for (int i = 0; i < faces.size(); i++) {
                 Face thisFace = faces.valueAt(i);
-                float x1 = thisFace.getPosition().x;
-                float y1 = thisFace.getPosition().y;
-                float x2 = x1 + thisFace.getWidth();
-                float y2 = y1 + thisFace.getHeight();
+                 x1 = thisFace.getPosition().x;
+                 y1 = thisFace.getPosition().y;
+                 x2 = x1 + thisFace.getWidth();
+                 y2 = y1 + thisFace.getHeight();
+
                 tempCanvas.drawRoundRect(new RectF(x1, y1, x2, y2), 2, 2, myRectPaint);
 
-
-
-
-
-
             }
-            imageView.setImageDrawable(new BitmapDrawable(getResources(), tempBitmap));
+            Bitmap croppedBitmap = Bitmap.createBitmap(tempBitmap,(int)x1,(int) y1,(int)x2-(int)x1,(int)y2-(int)y1);
+
+            imageView.setImageDrawable(new BitmapDrawable(getResources(), croppedBitmap));
+
+            //imageView.setImageDrawable(new BitmapDrawable(getResources(), tempBitmap));
 
             /**save the image and get the images path*/
 
             // Delete the temporary image file
             BitmapUtils.deleteImageFile(this, mTempPhotoPath);
             // Save the image
-            String imagPath = BitmapUtils.saveImage(this, tempBitmap);
+            String imagPath = BitmapUtils.saveImage(this, croppedBitmap);
             Log.d(TAG, "processAndSetImage: image path is " + imagPath);
 
 
             //the life is successful for this button make it's visibility gone
             GonButtons(flag);
-           // uploadZipToServer(imagPath);
+           // uploadZipToServer();
 
-
-
-           /* if (count == 3) {
+            if (count == 3) {
                 //zip all the photos in the file
                 ZipUtil.pack(new File(String.valueOf(BitmapUtils.storageDir)), new File(String.valueOf(BitmapUtils.storageDir)+".zip"));
                 ZipUtil.unexplode(new File( BitmapUtils.storageDir + ".zip"));
                 // write function to send the ziped file to the server [moustafa]
                 Log.d(TAG, "uploading zip file: welcome to the server  zip path is "+BitmapUtils.storageDir + ".zip");
 
-
-            }*/
+            }
 
 
 
