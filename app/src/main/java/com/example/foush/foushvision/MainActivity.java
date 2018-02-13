@@ -8,8 +8,6 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
@@ -28,6 +26,7 @@ import android.view.View;
 import android.webkit.MimeTypeMap;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -54,8 +53,8 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class MainActivity extends AppCompatActivity   {
-     ProgressDialog progress ;
+public class MainActivity extends AppCompatActivity implements ProgressRequestBody.UploadCallbacks   {
+    ProgressDialog progress ;
     @BindView(R.id.image_view)
     ImageView imageView;
     @BindView(R.id.title)
@@ -69,6 +68,7 @@ public class MainActivity extends AppCompatActivity   {
 
     @BindView(R.id.uploadButton)
     Button uploadButton;
+    ProgressBar progressBar;
     private static final int flagPic1 = 1;
     private static final int flagPic2 = 2;
     private static final int flagPic3 = 3;
@@ -107,15 +107,16 @@ public class MainActivity extends AppCompatActivity   {
     }
 
     private void initView() {
+        progressBar = findViewById(R.id.progressBar);
 
         ButterKnife.bind(this);
         /**
-        * Glide Bitmap Pool is a memory management library for reusing the bitmap memory.
+         * Glide Bitmap Pool is a memory management library for reusing the bitmap memory.
          * As it reuses bitmap memory , so no more GC calling again and again ,
          * hence smooth running application. It uses inBitmap while decoding the bitmap
          * on the supported android versions. All the version use-cases has been handled to optimize
          * it better.
-        */
+         */
         GlideBitmapPool.initialize(10 * 1024 * 1024); // 10mb max memory size
         /*init the progress bar for the upload zip file part*/
         new ProgressDialog(MainActivity.this);
@@ -151,7 +152,7 @@ public class MainActivity extends AppCompatActivity   {
                 }
                 break;
             case R.id.uploadButton:
-                 uploadZipToServer(BitmapUtils.storageDir + ".zip");
+                uploadZipToServer(BitmapUtils.storageDir + ".zip");
 
                 break;
         }
@@ -309,14 +310,15 @@ public class MainActivity extends AppCompatActivity   {
             //Draw Rectangles on the Faces
             for (int i = 0; i < faces.size(); i++) {
                 Face thisFace = faces.valueAt(i);
-                 x1 = thisFace.getPosition().x;
-                 y1 = thisFace.getPosition().y;
-                 x2 = x1 + thisFace.getWidth();
-                 y2 = y1 + thisFace.getHeight();
+                x1 = thisFace.getPosition().x;
+                y1 = thisFace.getPosition().y;
+                x2 = x1 + thisFace.getWidth();
+                y2 = y1 + thisFace.getHeight();
 
                 tempCanvas.drawRoundRect(new RectF(x1, y1, x2, y2), 2, 2, myRectPaint);
 
             }
+            //crop the image to get only the image of the user
             Bitmap croppedBitmap = Bitmap.createBitmap(tempBitmap,(int)x1,(int) y1,(int)x2-(int)x1,(int)y2-(int)y1);
 
             imageView.setImageDrawable(new BitmapDrawable(getResources(), croppedBitmap));
@@ -334,12 +336,12 @@ public class MainActivity extends AppCompatActivity   {
 
             //the life is successful for this button make it's visibility gone
             GonButtons(flag);
-           // uploadZipToServer();
+            // uploadZipToServer();
 
             if (count == 3) {
                 //zip all the photos in the file
                 ZipUtil.pack(new File(String.valueOf(BitmapUtils.storageDir)), new File(String.valueOf(BitmapUtils.storageDir)+".zip"));
-                ZipUtil.unexplode(new File( BitmapUtils.storageDir + ".zip"));
+               // ZipUtil.unexplode(new File( BitmapUtils.storageDir + ".zip"));
                 // write function to send the ziped file to the server [moustafa]
                 Log.d(TAG, "uploading zip file: welcome to the server  zip path is "+BitmapUtils.storageDir + ".zip");
 
@@ -419,15 +421,15 @@ public class MainActivity extends AppCompatActivity   {
         progress = new ProgressDialog(MainActivity.this);
         progress.setTitle("uploading");
         progress.setMessage("please wait ...");
-//        progress.setMax(100);
-        progress.setCancelable(false);
-        progress.show();
+       // progress.setMax(100);
+        progress.setCancelable(true);
+      progress.show();
 
 
         Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
-//                 progress.show();
+            //   progress.show();
                 File f = new File(zipfile);
                 String contnet_type = getMimeType(f.getPath());
                 String file_path = f.getAbsolutePath();
@@ -473,10 +475,21 @@ public class MainActivity extends AppCompatActivity   {
     }
 
 
+    @Override
+    public void onProgressUpdate(int percentage) {
 
+    }
 
+    @Override
+    public void onError() {
+
+    }
+
+    @Override
+    public void onFinish() {
+
+    }
 }
-
 
 
 
